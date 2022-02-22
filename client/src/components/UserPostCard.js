@@ -26,7 +26,7 @@ const UserPostCard = ({ post, user, isMobile }) => {
     textSubmission,
     linkSubmission,
     imageSubmission,
-    subreddit,
+    videoSubmission, 
     author,
     upvotedBy,
     downvotedBy,
@@ -115,9 +115,6 @@ const UserPostCard = ({ post, user, isMobile }) => {
         to={`/comments/${id}`}
       >
         <Typography variant="subtitle2">
-          <Link component={RouterLink} to={`/r/${subreddit.subredditName}`}>
-            {`r/${subreddit.subredditName} `}
-          </Link>
           <Typography variant="caption" className={classes.userAndDate}>
             • Posted by
             <Link component={RouterLink} to={`/u/${author.username}`}>
@@ -136,7 +133,9 @@ const UserPostCard = ({ post, user, isMobile }) => {
         </Typography>
         {postType === 'Text' ? (
           <Typography variant="body1">
-            {ReactHtmlParser(trimmedText)}
+            <pre style={{ fontFamily: 'inherit' }}>
+              {ReactHtmlParser(trimmedText)}
+            </pre>
           </Typography>
         ) : postType === 'Image' ? (
           <a
@@ -152,6 +151,20 @@ const UserPostCard = ({ post, user, isMobile }) => {
               className={classes.image}
             />
           </a>
+        ) : postType === 'Video' ? (
+          <Paper elevation={0} square className={classes.thumbnail}>
+            {/* <CardMedia
+              className={classes.thumbnail}
+              src={(videoSubmission?.videoLink)}
+              title={title}
+              component="video"
+              href={videoSubmission.videoLink}
+              target="_noblank"
+            /> */}
+            <video width="70" height="140" controls style={{marginTop: '-51px'}} >
+              <source src={videoSubmission.videoLink} type="video/mp4"/>
+            </video>
+          </Paper>
         ) : (
           <Link href={fixUrl(linkSubmission)}>
             {formattedLink} <OpenInNewIcon fontSize="inherit" />

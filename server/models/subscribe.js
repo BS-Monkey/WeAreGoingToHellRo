@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const uniqueValidator = require('mongoose-unique-validator');
 const schemaCleaner = require('../utils/schemaCleaner');
 
-const subredditSchema = new mongoose.Schema(
+const subscribeSchema = new mongoose.Schema(
   {
     subredditName: {
       type: String,
@@ -41,9 +41,9 @@ const subredditSchema = new mongoose.Schema(
   }
 );
 
-subredditSchema.plugin(uniqueValidator);
+subscribeSchema.plugin(uniqueValidator);
 
 // replaces _id with id, convert id to string from ObjectID and deletes __v
-schemaCleaner(subredditSchema);
+schemaCleaner(subscribeSchema);
 
-module.exports = mongoose.model('Subreddit', subredditSchema);
+module.exports = mongoose.model('Subscribe', subscribeSchema);

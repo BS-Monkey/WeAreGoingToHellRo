@@ -12,11 +12,21 @@ const login = async (credentials) => {
   return response.data;
 };
 
+// const logout = async (id) => {
+//   const response = await axios.post(`${backendUrl}/api/logout/${id}`);
+//   return response.data;
+// };
+
 const signup = async (enteredData) => {
   const response = await axios.post(`${backendUrl}/api/signup`, enteredData);
   return response.data;
 };
 
-const authService = { setToken, login, signup };
+const logout = async (id) => {
+  const response = await axios.post(`${backendUrl}/api/logout`, {id});
+  return response.data;
+}
+
+const authService = { setToken, login, signup, logout };
 
 export default authService;

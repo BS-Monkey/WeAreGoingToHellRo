@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useHistory, useLocation } from 'react-router-dom';
 import { logoutUser } from '../reducers/userReducer';
 import { notify } from '../reducers/notificationReducer';
 import MobileUserMenu from './MobileUserMenu';
@@ -15,12 +15,14 @@ import {
   Button,
   useMediaQuery,
   IconButton,
+  Avatar, 
 } from '@material-ui/core';
 import { useNavStyles } from '../styles/muiStyles';
 import { useTheme } from '@material-ui/core/styles';
 import RedditIcon from '@material-ui/icons/Reddit';
 import FavoriteIcon from '@material-ui/icons/Favorite';
 import SearchIcon from '@material-ui/icons/Search';
+import { frontendUrl } from '../backendUrl';
 
 const NavBar = () => {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -29,10 +31,14 @@ const NavBar = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('xs'));
   const classes = useNavStyles();
+  const history = useHistory();
+  const isNotDesktop = useMediaQuery(theme.breakpoints.down('md'));
 
   const handleLogout = () => {
-    dispatch(logoutUser());
+    dispatch(logoutUser(user.id));
     dispatch(notify(`u/${user.username} logged out`, 'success'));
+    // history.push('/');
+    document.location = '/';
   };
 
   return (
@@ -42,27 +48,19 @@ const NavBar = () => {
           <>
             <div className={classes.leftPortion}>
               <div className={classes.logoWrapper}>
-                <Button
+                <a
                   className={classes.logo}
                   color="primary"
                   component={RouterLink}
-                  to="/"
-                  startIcon={<RedditIcon fontSize="large" />}
+                  href="/"
                   size="large"
                 >
-                  reddish
-                </Button>
-                <Typography variant="caption" color="secondary">
-                  Made with <FavoriteIcon style={{ fontSize: 12 }} /> by
-                  <Link
-                    href={'https://github.com/amand33p'}
-                    color="inherit"
-                    target="_blank"
-                    rel="noopener"
-                  >
-                    <strong>{` amand33p`}</strong>
-                  </Link>
-                </Typography>
+                  {isMobile ? (
+                    <img alt="WeAreGoingToHellRo" src={`${frontendUrl}/logonou_small.png`} />
+                  ) : (
+                    <img alt="WeAreGoingToHellRo" src={`${frontendUrl}/logonou.png`}/>
+                  )}                  
+                </a>
               </div>
               {!isMobile && <SearchBar />}
             </div>

@@ -8,11 +8,16 @@ import {
   DialogTitle,
   MenuItem,
   ListItemIcon,
+  useMediaQuery
 } from '@material-ui/core';
+import {useTheme} from '@material-ui/core/styles';
 import DeleteIcon from '@material-ui/icons/Delete';
 
 const DeleteDialog = ({ title, handleDelete, handleMenuClose, type }) => {
   const [open, setOpen] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('xs'));
+
 
   const handleClickOpen = () => {
     setOpen(true);
@@ -40,7 +45,7 @@ const DeleteDialog = ({ title, handleDelete, handleMenuClose, type }) => {
           startIcon={<DeleteIcon />}
           style={{ textTransform: 'none' }}
         >
-          Delete
+          {!isMobile && ('Delete')}
         </Button>
       ) : type === 'avatar' ? (
         <Button
@@ -51,13 +56,24 @@ const DeleteDialog = ({ title, handleDelete, handleMenuClose, type }) => {
           startIcon={<DeleteIcon />}
           style={{ textTransform: 'none' }}
         >
-          Remove
+          {!isMobile && ('Remove')}
+        </Button>
+      ) : type === 'award' ? (
+        <Button
+          onClick={handleClickOpen}
+          size="small"
+          color="secondary"
+          variant="outlined"
+          startIcon={<DeleteIcon />}
+          style={{ textTransform: 'none', align: 'center' }}
+        >
+          {!isMobile && ('Delete')}
         </Button>
       ) : (
         <MenuItem onClick={handleClickOpen}>
           <ListItemIcon>
             <DeleteIcon style={{ marginRight: 7 }} />
-            Delete
+            {!isMobile && ('Delete')}
           </ListItemIcon>
         </MenuItem>
       )}
@@ -67,6 +83,8 @@ const DeleteDialog = ({ title, handleDelete, handleMenuClose, type }) => {
             ? 'Delete Comment?'
             : type === 'avatar'
             ? 'Remove Avatar?'
+            : type === 'award'
+            ? 'Delete Award?'
             : 'Delete Post?'}
         </DialogTitle>
         <DialogContent dividers>
@@ -75,6 +93,9 @@ const DeleteDialog = ({ title, handleDelete, handleMenuClose, type }) => {
               ? `Are you sure you want to delete your comment?`
               : type === 'avatar'
               ? 'Are you sure you want to remove your avatar?'
+              : type === 'award'
+              ? `Are you sure you want to delete this award titled '${title}'? You
+              can't undo this.`
               : `Are you sure you want to delete your post titled '${title}'? You
               can't undo this.`}
           </DialogContentText>
@@ -98,6 +119,8 @@ const DeleteDialog = ({ title, handleDelete, handleMenuClose, type }) => {
               ? 'Delete Comment'
               : type === 'avatar'
               ? 'Remove Avatar'
+              : type === 'award'
+              ? 'Delete Award'
               : 'Delete Post'}
           </Button>
         </DialogActions>

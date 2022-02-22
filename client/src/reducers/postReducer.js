@@ -1,4 +1,5 @@
 import postService from '../services/posts';
+import userService from '../services/user';
 
 const postReducer = (state = null, action) => {
   switch (action.type) {
@@ -26,15 +27,9 @@ const postReducer = (state = null, action) => {
   }
 };
 
-export const fetchPosts = (sortBy) => {
+export const fetchPosts = (sortBy, flairBy) => {
   return async (dispatch) => {
-    let posts;
-
-    if (sortBy !== 'subscribed') {
-      posts = await postService.getPosts(sortBy, 10, 1);
-    } else {
-      posts = await postService.getSubPosts(10, 1);
-    }
+    const posts = await postService.getPosts(sortBy, flairBy, 10, 1);
 
     dispatch({
       type: 'SET_POSTS',
@@ -43,18 +38,44 @@ export const fetchPosts = (sortBy) => {
   };
 };
 
-export const loadMorePosts = (sortBy, page) => {
+export const loadMorePosts = (sortBy, flairBy, page) => {
+  console.log(sortBy, flairBy, page);
   return async (dispatch) => {
-    let posts;
-    if (sortBy !== 'subscribed') {
-      posts = await postService.getPosts(sortBy, 10, page);
-    } else {
-      posts = await postService.getSubPosts(10, page);
-    }
+    const posts = await postService.getPosts(sortBy, flairBy, 10, page);
+
+    console.log('loadMorePosts', posts);
 
     dispatch({
       type: 'LOAD_MORE_POSTS',
       payload: posts,
+    });
+  };
+};
+
+export const createNewPost = (postObject) => {
+  return async (dispatch) => {
+    const addedPost = await postService.addNew(postObject);
+
+    console.log(addedPost);
+
+    dispatch({
+      type: 'CREATE_NEW_POST',
+      payload: addedPost,
+    });
+
+    return addedPost.id;
+  };
+};
+
+
+export const updatePost = (id, postObject) => {
+  console.log(postObject);
+  return async (dispatch) => {
+    const updatedPost = await postService.editPost(id, postObject);
+
+    dispatch({
+      type: 'UPDATE_POST',
+      payload: updatedPost,
     });
   };
 };
@@ -92,8 +113,20 @@ export const toggleDownvote = (id, downvotedBy, upvotedBy) => {
 };
 
 export const removePost = (id) => {
+  console.log(id);
   return async (dispatch) => {
     await postService.deletePost(id);
+
+    dispatch({
+      type: 'DELETE_POST',
+      payload: id,
+    });
+  };
+};
+
+export const realRemovePost = (id) => {
+  return async (dispatch) => {
+    await postService.realDeletePost(id);
 
     dispatch({
       type: 'DELETE_POST',

@@ -1,14 +1,29 @@
 const Post = require('../models/post');
-const Subreddit = require('../models/subreddit');
 const User = require('../models/user');
 const postTypeValidator = require('../utils/postTypeValidator');
 const { cloudinary, UPLOAD_PRESET } = require('../utils/config');
 const paginateResults = require('../utils/paginateResults');
 
+// const { getIO } = require('../io');
+// const path = require("path");
+// const randomString = require('random-string');
+// function getFileName(prefix, filename) {
+//   var ext = path.extname(filename)
+//   var newFileName = randomString({
+//     length: 8,
+//     numeric: true,
+//     letters: true,
+//     special: false
+//   });
+//   newFileName += ext;
+//   return prefix + newFileName;
+// }
+
 const getPosts = async (req, res) => {
   const page = Number(req.query.page);
   const limit = Number(req.query.limit);
   const sortBy = req.query.sortby;
+  const flairBy = Number(req.query.flairBy);
 
   let sortQuery;
   switch (sortBy) {
@@ -33,16 +48,28 @@ const getPosts = async (req, res) => {
     default:
       sortQuery = {};
   }
-
-  const postsCount = await Post.countDocuments();
+  
+  const postsCount = await Post.find({is_deleted: false}).countDocuments();
   const paginated = paginateResults(page, limit, postsCount);
-  const allPosts = await Post.find({})
-    .sort(sortQuery)
-    .select('-comments')
-    .limit(limit)
-    .skip(paginated.startIndex)
-    .populate('author', 'username')
-    .populate('subreddit', 'subredditName');
+
+  let allPosts;
+  if(flairBy === 0) {
+    allPosts = await Post.find({is_pinned: false, is_deleted: false})
+      .sort(sortQuery)
+      .select('-comments')
+      .limit(limit)
+      .skip(paginated.startIndex)
+      .populate('author', 'username')
+  } else {
+    allPosts = await Post.find({flairSubmission: flairBy, is_pinned: false, is_deleted: false})
+      .sort(sortQuery)
+      .select('-comments')
+      .limit(limit)
+      .skip(paginated.startIndex)
+      .populate('author', 'username')
+  }
+
+  // console.log('all Posts', allPosts);
 
   const paginatedPosts = {
     previous: paginated.results.previous,
@@ -53,43 +80,19 @@ const getPosts = async (req, res) => {
   res.status(200).json(paginatedPosts);
 };
 
-const getSubscribedPosts = async (req, res) => {
-  const page = Number(req.query.page);
-  const limit = Number(req.query.limit);
+const getDeletedPosts = async (req, res) => {
+  const allPosts = await Post.find({is_deleted: true})
+      .populate('author', 'username')
 
-  const user = await User.findById(req.user);
-  if (!user) {
-    return res
-      .status(404)
-      .send({ message: 'User does not exist in database.' });
-  }
+  res.status(200).json(allPosts);
+};
 
-  const subscribedSubs = await Subreddit.find({
-    _id: { $in: user.subscribedSubs },
-  });
-
-  const postsCount = subscribedSubs
-    .map((s) => s.posts.length)
-    .reduce((sum, s) => s + sum, 0);
-
-  const paginated = paginateResults(page, limit, postsCount);
-  const subscribedPosts = await Post.find({
-    subreddit: { $in: user.subscribedSubs },
-  })
-    .sort({ hotAlgo: -1 })
+const getPinPosts = async (req, res) => {
+  const allPosts = await Post.find({is_pinned: true, is_deleted: false})
     .select('-comments')
-    .limit(limit)
-    .skip(paginated.startIndex)
     .populate('author', 'username')
-    .populate('subreddit', 'subredditName');
-
-  const paginatedPosts = {
-    previous: paginated.results.previous,
-    results: subscribedPosts,
-    next: paginated.results.next,
-  };
-
-  res.status(200).json(paginatedPosts);
+  
+  res.status(200).json(allPosts);
 };
 
 const getSearchedPosts = async (req, res) => {
@@ -121,8 +124,7 @@ const getSearchedPosts = async (req, res) => {
     .select('-comments')
     .limit(limit)
     .skip(paginated.startIndex)
-    .populate('author', 'username')
-    .populate('subreddit', 'subredditName');
+    .populate('author', 'username');
 
   const paginatedPosts = {
     previous: paginated.results.previous,
@@ -145,7 +147,6 @@ const getPostAndComments = async (req, res) => {
 
   const populatedPost = await post
     .populate('author', 'username')
-    .populate('subreddit', 'subredditName')
     .populate('comments.commentedBy', 'username')
     .populate('comments.replies.repliedBy', 'username')
     .execPopulate();
@@ -156,22 +157,25 @@ const getPostAndComments = async (req, res) => {
 const createNewPost = async (req, res) => {
   const {
     title,
-    subreddit,
     postType,
     textSubmission,
     linkSubmission,
     imageSubmission,
+    videoSubmission, 
+    flairSubmission, 
+    is_pinned, 
+    is_locked, 
   } = req.body;
 
   const validatedFields = postTypeValidator(
     postType,
     textSubmission,
     linkSubmission,
-    imageSubmission
+    imageSubmission, 
+    videoSubmission, 
   );
 
   const author = await User.findById(req.user);
-  const targetSubreddit = await Subreddit.findById(subreddit);
 
   if (!author) {
     return res
@@ -179,18 +183,21 @@ const createNewPost = async (req, res) => {
       .send({ message: 'User does not exist in database.' });
   }
 
-  if (!targetSubreddit) {
-    return res.status(404).send({
-      message: `Subreddit with ID: '${subreddit}' does not exist in database.`,
-    });
-  }
+  // if(author.userRole >= 3) {
+  //   return res
+  //     .status(404)
+  //     .send({ message: 'You cannot pin or lock this post.' });
+  // }
 
   const newPost = new Post({
     title,
-    subreddit,
     author: author._id,
     upvotedBy: [author._id],
     pointsCount: 1,
+    flairSubmission: flairSubmission, 
+    is_pinned: is_pinned, 
+    is_locked: is_locked, 
+    is_deleted: false, 
     ...validatedFields,
   });
 
@@ -199,6 +206,8 @@ const createNewPost = async (req, res) => {
       imageSubmission,
       {
         upload_preset: UPLOAD_PRESET,
+        resource_type: 'image', 
+        chunk_size: 4000000, 
       },
       (error) => {
         if (error) return res.status(401).send({ message: error.message });
@@ -211,10 +220,27 @@ const createNewPost = async (req, res) => {
     };
   }
 
-  const savedPost = await newPost.save();
+  if (postType === 'Video') {
+    const uploadedVideo = await cloudinary.uploader.upload_large(
+      videoSubmission, 
+      {
+        resource_type: "auto", 
+        format: 'mp4',
+        chunk_size: 25000000,
+        upload_preset: UPLOAD_PRESET,
+      },
+      (error) => {
+        console.log(error)
+      }
+    );
 
-  targetSubreddit.posts = targetSubreddit.posts.concat(savedPost._id);
-  await targetSubreddit.save();
+    newPost.videoSubmission = {
+      videoLink: uploadedVideo.url,
+      videoId: uploadedVideo.public_id,
+    };
+  }
+
+  const savedPost = await newPost.save();
 
   author.posts = author.posts.concat(savedPost._id);
   author.karmaPoints.postKarma++;
@@ -222,16 +248,15 @@ const createNewPost = async (req, res) => {
 
   const populatedPost = await savedPost
     .populate('author', 'username')
-    .populate('subreddit', 'subredditName')
     .execPopulate();
 
-  res.status(201).json(populatedPost);
+  res.status(202).json(populatedPost);
 };
 
 const updatePost = async (req, res) => {
   const { id } = req.params;
 
-  const { textSubmission, linkSubmission, imageSubmission } = req.body;
+  const { textSubmission, linkSubmission, imageSubmission, videoSubmission, flairSubmission, is_pinned, is_locked } = req.body;
 
   const post = await Post.findById(id);
   const author = await User.findById(req.user);
@@ -248,7 +273,7 @@ const updatePost = async (req, res) => {
       .send({ message: 'User does not exist in database.' });
   }
 
-  if (post.author.toString() !== author._id.toString()) {
+  if (author.userRole >= 3 &&  post.author.toString() !== author._id.toString()) {
     return res.status(401).send({ message: 'Access is denied.' });
   }
 
@@ -256,7 +281,8 @@ const updatePost = async (req, res) => {
     post.postType,
     textSubmission,
     linkSubmission,
-    imageSubmission
+    imageSubmission, 
+    videoSubmission, 
   );
 
   switch (post.postType) {
@@ -286,16 +312,36 @@ const updatePost = async (req, res) => {
       break;
     }
 
+    case 'Video' : {
+      const uploadedImage = await cloudinary.uploader.upload(
+        videoSubmission,
+        {
+          upload_preset: UPLOAD_PRESET,
+        },
+        (error) => {
+          if (error) return res.status(401).send({ message: error.message });
+        }
+      );
+
+      post.videoSubmission = {
+        videoLink: uploadedImage.url,
+        videoId: uploadedImage.public_id,
+      };
+      break;
+    }
+
     default:
       return res.status(403).send({ message: 'Invalid post type.' });
   }
 
   post.updatedAt = Date.now();
+  post.flairSubmission = flairSubmission;
+  post.is_pinned = is_pinned;
+  post.is_locked = is_locked;
 
   const savedPost = await post.save();
   const populatedPost = await savedPost
     .populate('author', 'username')
-    .populate('subreddit', 'subredditName')
     .populate('comments.commentedBy', 'username')
     .populate('comments.replies.repliedBy', 'username')
     .execPopulate();
@@ -321,22 +367,42 @@ const deletePost = async (req, res) => {
       .send({ message: 'User does not exist in database.' });
   }
 
-  if (post.author.toString() !== author._id.toString()) {
+  if (author.userRole >= 3 && post.author.toString() !== author._id.toString()) {
     return res.status(401).send({ message: 'Access is denied.' });
   }
 
-  const subreddit = await Subreddit.findById(post.subreddit);
+  post.is_deleted = true;
+  await post.save();
 
-  if (!subreddit) {
+  author.posts = author.posts.filter((p) => p.toString() !== id);
+  await author.save();
+
+  res.status(204).end();
+};
+
+const realDeletePost = async (req, res) => {
+  const { id } = req.params;
+
+  const post = await Post.findById(id);
+  const author = await User.findById(req.user);
+
+  if (!post) {
     return res.status(404).send({
-      message: `Subreddit with ID: '${subreddit._id}'  does not exist in database.`,
+      message: `Post with ID: ${id} does not exist in database.`,
     });
   }
 
-  await Post.findByIdAndDelete(id);
+  if (!author) {
+    return res
+      .status(404)
+      .send({ message: 'User does not exist in database.' });
+  }
 
-  subreddit.posts = subreddit.posts.filter((p) => p.toString() !== id);
-  await subreddit.save();
+  if (author.userRole >= 3 && post.author.toString() !== author._id.toString()) {
+    return res.status(401).send({ message: 'Access is denied.' });
+  }
+
+  await Post.findByIdAndDelete(id);
 
   author.posts = author.posts.filter((p) => p.toString() !== id);
   await author.save();
@@ -346,10 +412,12 @@ const deletePost = async (req, res) => {
 
 module.exports = {
   getPosts,
-  getSubscribedPosts,
+  getDeletedPosts, 
+  getPinPosts, 
   getSearchedPosts,
   getPostAndComments,
   createNewPost,
   updatePost,
   deletePost,
+  realDeletePost, 
 };

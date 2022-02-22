@@ -21,7 +21,14 @@ const parseImageSubmission = (imageSubmission) => {
   return imageSubmission;
 };
 
-const postTypeValidator = (type, text, link, image) => {
+const parseVieoSubmission = (videoSubmission) => {
+  if(!videoSubmission) {
+    throw new Error(`Video is needed for type 'Video'.`);
+  }
+  return videoSubmission;
+}
+
+const postTypeValidator = (type, text, link, image, video) => {
   switch (type) {
     case 'Text':
       return {
@@ -41,9 +48,15 @@ const postTypeValidator = (type, text, link, image) => {
         imageSubmission: parseImageSubmission(image),
       };
 
+    case 'Video':
+      return {
+        postType: 'Video', 
+        videoSubmission: parseVieoSubmission(video), 
+      };
+
     default:
       throw new Error(
-        'Invalid post type. Valid types include - Text, Link or Image.'
+        'Invalid post type. Valid types include - Text, Link, Image, Video.'
       );
   }
 };

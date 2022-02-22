@@ -17,10 +17,11 @@ import {
   Typography,
   Avatar,
 } from '@material-ui/core';
-import { useUserPageStyles } from '../styles/muiStyles';
 import { useTheme } from '@material-ui/core/styles';
 import CakeIcon from '@material-ui/icons/Cake';
 import PersonIcon from '@material-ui/icons/Person';
+import { useUserPageStyles } from '../styles/muiStyles';
+import { frontendUrl } from '../backendUrl';
 
 const UserPage = () => {
   const classes = useUserPageStyles();
@@ -88,6 +89,8 @@ const UserPage = () => {
     }
   };
 
+  console.log(avatar.imageLink);
+
   return (
     <Container disableGutters>
       <Paper variant="outlined" className={classes.mainPaper}>
@@ -96,7 +99,7 @@ const UserPage = () => {
             {avatar && avatar.exists ? (
               <Avatar
                 alt={userName}
-                src={getCircularAvatar(avatar.imageLink)}
+                src={avatar.imageLink}
                 className={classes.avatar}
               />
             ) : (

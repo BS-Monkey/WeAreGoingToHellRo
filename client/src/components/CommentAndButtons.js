@@ -9,11 +9,18 @@ import { notify } from '../reducers/notificationReducer';
 import DeleteDialog from './DeleteDialog';
 import getErrorMsg from '../utils/getErrorMsg';
 
-import { TextField, Button, Typography } from '@material-ui/core';
+import { 
+  TextField, 
+  Button, 
+  Typography, 
+  useMediaQuery, 
+} from '@material-ui/core';
+import {useTheme} from '@material-ui/core/styles';
 import { useCommentAndBtnsStyles } from '../styles/muiStyles';
 import ReplyIcon from '@material-ui/icons/Reply';
 import SendIcon from '@material-ui/icons/Send';
 import EditIcon from '@material-ui/icons/Edit';
+import { blacklistWords } from '../backendUrl';
 
 const CommentAndButtons = ({ isMobile, comment, postId, user }) => {
   const classes = useCommentAndBtnsStyles();
@@ -25,6 +32,16 @@ const CommentAndButtons = ({ isMobile, comment, postId, user }) => {
   const [submitting, setSubmitting] = useState(false);
 
   const handlePostReply = async () => {
+    if (replyInput.length > 3000) {
+      alert('reply to a comment must be less than 3000 characters.');
+      return;
+    }
+    for (let i = 0; i < blacklistWords.length; i ++) {
+      if (replyInput.includes(blacklistWords[i])) {
+        alert('You can not type the words ' + `'${blacklistWords[i]}'`);
+        return false;
+      }
+    }
     try {
       setSubmitting(true);
       await dispatch(addReply(postId, comment.id, replyInput));
@@ -39,6 +56,16 @@ const CommentAndButtons = ({ isMobile, comment, postId, user }) => {
   };
 
   const handleEditComment = async () => {
+    if (editInput.length > 3000) {
+      alert('reply to a comment must be less than 3000 characters.');
+      return;
+    }
+    for (let i = 0; i < blacklistWords.length; i ++) {
+      if (editInput.includes(blacklistWords[i])) {
+        alert('You can not type the words ' + `'${blacklistWords[i]}'`);
+        return false;
+      }
+    }
     try {
       setSubmitting(true);
       await dispatch(editComment(postId, comment.id, editInput));
@@ -62,9 +89,15 @@ const CommentAndButtons = ({ isMobile, comment, postId, user }) => {
 
   return (
     <div>
-      {!editOpen ? (
-        <Typography variant="body2">{comment.commentBody}</Typography>
-      ) : (
+      {!editOpen 
+      ? comment.is_deleted 
+        ? (
+            <Typography variant="body2">[removed]</Typography>
+          ) 
+        : (
+            <Typography variant="body2">{comment.commentBody}</Typography>
+          ) 
+      : (
         <div className={classes.inputDiv}>
           <TextField
             multiline
@@ -100,7 +133,7 @@ const CommentAndButtons = ({ isMobile, comment, postId, user }) => {
         </div>
       )}
       <div className={classes.btnBar}>
-        {user && (
+        {(((user && user.username && user.username !== '') && (user && user.id !== comment.commentedBy.id)) || (user.userrole === 1 || user.userrole === 2)) && (
           <Button
             size="small"
             color="inherit"
@@ -108,10 +141,10 @@ const CommentAndButtons = ({ isMobile, comment, postId, user }) => {
             className={classes.btnStyle}
             onClick={() => setReplyOpen((prevState) => !prevState)}
           >
-            Reply
+            {!isMobile && ('Reply')}
           </Button>
         )}
-        {user && user.id === comment.commentedBy.id && (
+        {((user && user.id === comment.commentedBy.id) || (user.userrole === 1 || user.userrole === 2)) && (
           <>
             <Button
               size="small"
@@ -120,7 +153,7 @@ const CommentAndButtons = ({ isMobile, comment, postId, user }) => {
               className={classes.btnStyle}
               onClick={() => setEditOpen((prevState) => !prevState)}
             >
-              Edit
+              {!isMobile && ('Edit')}
             </Button>
             <DeleteDialog type="comment" handleDelete={handleCommentDelete} />
           </>

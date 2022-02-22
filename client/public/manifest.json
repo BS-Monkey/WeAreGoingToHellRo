@@ -1,6 +1,6 @@
 {
-  "short_name": "reddish",
-  "name": "reddish | amand33p",
+  "short_name": "HellRO",
+  "name": "WeAreGoingToHellRO",
   "icons": [
     {
       "src": "favicon.png",
@@ -10,7 +10,7 @@
     {
       "src": "logo256.png",
       "type": "image/png",
-      "sizes": "256x256"
+      "sizes": "400x304"
     },
     {
       "src": "logo512.png",

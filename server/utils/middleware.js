@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const { SECRET } = require('../utils/config');
 
 const auth = (req, res, next) => {
+  // console.log('auth', req.header('x-auth-token'));
   try {
     const token = req.header('x-auth-token');
 
@@ -10,7 +11,6 @@ const auth = (req, res, next) => {
         .status(401)
         .send({ message: 'No auth token found. Authorization denied.' });
     }
-
     const decodedToken = jwt.verify(token, SECRET);
 
     if (!decodedToken.id) {
@@ -23,6 +23,7 @@ const auth = (req, res, next) => {
 
     next();
   } catch (error) {
+    console.log(error)
     res.status(500).send({ message: error.message });
   }
 };

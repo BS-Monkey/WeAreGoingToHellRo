@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
 import { Link as RouterLink } from 'react-router-dom';
 import AuthFormModal from './AuthFormModal';
 import SubFormModal from './SubFormModal';
 import UpdateAvatarModal from './UpdateAvatarModal';
 import DarkModeMenuItem from './DarkModeMenuItem';
-import { getCircularAvatar } from '../utils/cloudinaryTransform';
 import storageService from '../utils/localStorage';
+import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount';
 
 import {
   Button,
@@ -20,9 +21,18 @@ import { useUserMenuStyles } from '../styles/muiStyles';
 import FilterVintageIcon from '@material-ui/icons/FilterVintage';
 import AccountCircleIcon from '@material-ui/icons/AccountCircle';
 import PowerSettingsNewIcon from '@material-ui/icons/PowerSettingsNew';
+import { frontendUrl } from '../backendUrl';
 
-const DesktopUserMenu = ({ user, handleLogout }) => {
+const DesktopUserMenu = ({ users, handleLogout }) => {
+  const clientUrl = frontendUrl;
   const classes = useUserMenuStyles();
+  
+  const user = useSelector((state) => state);
+  
+  let userRole = 3;
+  if(user && user.user && user.user.userrole) 
+    userRole = user.user.userrole;
+
   const [anchorEl, setAnchorEl] = useState(null);
 
   const handleMenu = (event) => {
@@ -38,7 +48,11 @@ const DesktopUserMenu = ({ user, handleLogout }) => {
     handleLogout();
   };
 
-  const loggedUser = storageService.loadUser() || user;
+  const handleManageClick = () => {
+    window.location.href = clientUrl + '/manage';
+  }
+
+  const loggedUser = storageService.loadUser() || users;
 
   return (
     <div>
@@ -48,7 +62,7 @@ const DesktopUserMenu = ({ user, handleLogout }) => {
             {loggedUser?.avatar?.exists ? (
               <Avatar
                 alt={loggedUser.username}
-                src={getCircularAvatar(loggedUser.avatar.imageLink)}
+                src={loggedUser.avatar.imageLink}
                 variant="rounded"
                 className={classes.avatar}
               />
@@ -102,6 +116,15 @@ const DesktopUserMenu = ({ user, handleLogout }) => {
                 <PowerSettingsNewIcon style={{ marginRight: 7 }} /> Logout
               </ListItemIcon>
             </MenuItem>
+            <Divider variant="middle" />
+            {
+              userRole !== 3 && 
+              <MenuItem onClick={handleManageClick}>
+                <ListItemIcon>
+                  <SupervisorAccountIcon style={{ marginRight: 7 }} /> Manage
+                </ListItemIcon>
+              </MenuItem>
+            }
             <Divider variant="middle" />
             <DarkModeMenuItem closeMenu={handleClose} />
           </Menu>

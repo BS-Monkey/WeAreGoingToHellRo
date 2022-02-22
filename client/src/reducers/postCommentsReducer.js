@@ -4,10 +4,6 @@ const postPageReducer = (state = null, action) => {
   switch (action.type) {
     case 'FETCH_POST_COMMENTS':
       return action.payload;
-    case 'CREATE_NEW_POST':
-      return action.payload;
-    case 'UPDATE_POST':
-      return action.payload;
     case 'TOGGLE_VOTE':
       return { ...state, ...action.payload };
     case 'VOTE_COMMENT':
@@ -40,16 +36,18 @@ const postPageReducer = (state = null, action) => {
         ...state,
         comments: [...state.comments, action.payload],
       };
+    case 'ADD_AWARD':
+      return {
+        ...state, 
+        awards: [...state.awards, action.payload], 
+      }
     case 'ADD_REPLY':
       return {
         ...state,
-        comments: state.comments.map((c) =>
-          c.id !== action.payload.commentId
-            ? c
-            : { ...c, replies: [...c.replies, action.payload.addedReply] }
-        ),
+        comments: [...state.comments, action.payload.addedReply] 
       };
     case 'EDIT_COMMENT':
+      console.log('edit comment', action.payload.data);
       return {
         ...state,
         comments: state.comments.map((c) =>
@@ -59,10 +57,16 @@ const postPageReducer = (state = null, action) => {
         ),
       };
     case 'DELETE_COMMENT':
+      console.log('reducer', action.payload.data);
       return {
         ...state,
-        comments: state.comments.filter((c) => c.id !== action.payload),
+        comments: action.payload.data,
       };
+    case 'DELETE_AWARD': 
+      return {
+        ...state, 
+        awards: state.awards.filter((c) => c.id !== action.payload), 
+      }
     case 'EDIT_REPLY':
       return {
         ...state,
@@ -127,26 +131,13 @@ export const fetchPostComments = (id) => {
   };
 };
 
-export const createNewPost = (postObject) => {
+export const getAwardsCnt = (id) => {
   return async (dispatch) => {
-    const addedPost = await postService.addNew(postObject);
+    const getAwardsCnt = await postService.getAwardsCnt(id);
 
     dispatch({
-      type: 'CREATE_NEW_POST',
-      payload: addedPost,
-    });
-
-    return addedPost.id;
-  };
-};
-
-export const updatePost = (id, postObject) => {
-  return async (dispatch) => {
-    const updatedPost = await postService.editPost(id, postObject);
-
-    dispatch({
-      type: 'UPDATE_POST',
-      payload: updatedPost,
+      type: 'POST_AWARDS_CNT', 
+      payload: getAwardsCnt, 
     });
   };
 };
@@ -276,6 +267,18 @@ export const addComment = (postId, comment) => {
   };
 };
 
+export const addAward = (postId, award) => {
+  console.log(award);
+  return async (dispatch) => {
+    const addedAward = await postService.postAward(postId, { award });
+
+    dispatch({
+      type: 'ADD_AWARD',
+      payload: addedAward,
+    });
+  };
+};
+
 export const addReply = (postId, commentId, reply) => {
   return async (dispatch) => {
     const addedReply = await postService.postReply(postId, commentId, {
@@ -303,14 +306,37 @@ export const editComment = (postId, commentId, comment) => {
 
 export const deleteComment = (postId, commentId) => {
   return async (dispatch) => {
-    await postService.removeComment(postId, commentId);
+    let comments = await postService.removeComment(postId, commentId);
 
     dispatch({
       type: 'DELETE_COMMENT',
-      payload: commentId,
+      payload: {data: comments},
     });
   };
 };
+
+export const realDeleteComment = (postId, commentId) => {
+  return async (dispatch) => {
+    let comments = await postService.realRemoveComment(postId, commentId);
+
+    dispatch({
+      type: 'DELETE_REAL_COMMENT',
+      payload: {data: comments},
+    });
+  };
+};
+
+export const deleteAward = (postId, id) => {
+  console.log(postId, id);
+  return async (dispatch) => {
+    await postService.removeAward(postId, id);
+
+    dispatch({
+      type: 'DELETE_AWARD',
+      payload: id,
+    });
+  }
+}
 
 export const editReply = (postId, commentId, replyId, reply) => {
   return async (dispatch) => {

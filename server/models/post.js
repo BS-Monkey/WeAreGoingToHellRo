@@ -39,7 +39,24 @@ const commentSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
-  replies: [replySchema],
+  parentId: {
+    parentType: {
+      type: String, 
+      default: 'Post', 
+    }, 
+    parentId: {
+      type: String, 
+    }, 
+  }, 
+  childrenId: [
+    {
+      type: String, 
+    }
+  ],
+  commentLvl: {
+    type: Number, 
+    default: 0, 
+  }, 
   upvotedBy: [
     {
       type: mongoose.Schema.Types.ObjectId,
@@ -56,6 +73,28 @@ const commentSchema = new mongoose.Schema({
     type: Number,
     default: 1,
   },
+  is_deleted: {
+    type: Boolean, 
+    default: false, 
+  }, 
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+const awardSchema = new mongoose.Schema({
+  awardedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  awardedByName: {
+    type: String, 
+    default: '', 
+    require: true, 
+  }, 
+  awardBody: {
+    type: Number,
+    default: 0,
+  }, 
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
@@ -89,9 +128,19 @@ const postSchema = new mongoose.Schema({
       trim: true,
     },
   },
-  subreddit: {
+  videoSubmission: {
+    videoLink: {
+      type: String, 
+      trim: true, 
+    }, 
+    videoId: {
+      type: String, 
+      trim: true, 
+    }, 
+  }, 
+  subscribe: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Subreddit',
+    ref: 'Subscribe',
   },
   author: {
     type: mongoose.Schema.Types.ObjectId,
@@ -126,6 +175,7 @@ const postSchema = new mongoose.Schema({
     default: 0,
   },
   comments: [commentSchema],
+  awards: [awardSchema], 
   commentCount: {
     type: Number,
     default: 0,
@@ -137,12 +187,29 @@ const postSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now,
-  },
+  }, 
+  flairSubmission: {
+    type: Number, 
+    default: 0, 
+  }, 
+  is_pinned: {
+    type: Boolean, 
+    default: false, 
+  }, 
+  is_locked: {
+    type: Boolean, 
+    default: false, 
+  }, 
+  is_deleted: {
+    type: Boolean, 
+    default: false, 
+  }, 
 });
 
 // replaces _id with id, convert id to string from ObjectID and deletes __v
 schemaCleaner(postSchema);
 schemaCleaner(commentSchema);
+schemaCleaner(awardSchema);
 schemaCleaner(replySchema);
 
 module.exports = mongoose.model('Post', postSchema);

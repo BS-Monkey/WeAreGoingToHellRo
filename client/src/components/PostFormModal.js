@@ -22,6 +22,7 @@ import PostAddIcon from '@material-ui/icons/PostAdd';
 import ImageIcon from '@material-ui/icons/Image';
 import LinkIcon from '@material-ui/icons/Link';
 import EditIcon from '@material-ui/icons/Edit';
+import MovieFilterIcon from '@material-ui/icons/MovieFilter';
 
 const AddPostModal = ({
   actionType,
@@ -32,7 +33,10 @@ const AddPostModal = ({
   postToEditId,
   textSubmission,
   linkSubmission,
-  fromSubreddit,
+  flairSubmission, 
+  fromSubscribe,
+  is_pinned, 
+  is_locked
 }) => {
   const [open, setOpen] = useState(false);
   const [postType, setPostType] = useState('Text');
@@ -60,6 +64,11 @@ const AddPostModal = ({
     handleClickOpen();
   };
 
+  const handleVideoPost = () => {
+    setPostType('Video');
+    handleClickOpen();
+  };
+
   const handleLinkPost = () => {
     setPostType('Link');
     handleClickOpen();
@@ -74,13 +83,17 @@ const AddPostModal = ({
     return null;
   }
 
+  if (!user.username) {
+    return null;
+  }
+
   return (
     <div>
       {actionType === 'edit' ? (
         <MenuItem onClick={handleMenuClick}>
           <ListItemIcon>
             <EditIcon style={{ marginRight: 7 }} />
-            Edit Post
+            {!isMobile && ('Edit Post')}
           </ListItemIcon>
         </MenuItem>
       ) : isMobile ? (
@@ -98,11 +111,11 @@ const AddPostModal = ({
           {user.avatar && user.avatar.exists ? (
             <Avatar
               alt={user.username}
-              src={getCircularAvatar(user.avatar.imageLink)}
+              src={user.avatar.imageLink}
             />
           ) : (
             <Avatar className={classes.defaultAvatar}>
-              {user.username[0]}
+              {user.username}
             </Avatar>
           )}
           <Button
@@ -119,6 +132,9 @@ const AddPostModal = ({
           <div className={classes.iconGroup}>
             <IconButton onClick={handleImagePost}>
               <ImageIcon color="primary" />
+            </IconButton>
+            <IconButton onClick={handleVideoPost}>
+              <MovieFilterIcon color="primary" />
             </IconButton>
             <IconButton onClick={handleLinkPost}>
               <LinkIcon color="primary" />
@@ -146,7 +162,10 @@ const AddPostModal = ({
             postToEditId={postToEditId}
             textSubmission={textSubmission}
             linkSubmission={linkSubmission}
-            fromSubreddit={fromSubreddit}
+            fromSubscribe={fromSubscribe}
+            flairSubmission={flairSubmission}
+            is_locked={is_locked}
+            is_pinned={is_pinned}
           />
         </DialogContent>
       </Dialog>

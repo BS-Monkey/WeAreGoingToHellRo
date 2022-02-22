@@ -1,10 +1,11 @@
-const Subreddit = require('../models/subreddit');
+const Subreddit = require('../models/subscribe');
 const User = require('../models/user');
 const Post = require('../models/post');
 
 const paginateResults = require('../utils/paginateResults');
 
 const getSubreddits = async (_req, res) => {
+  console.log("Get Subreddits");
   const allSubreddits = await Subreddit.find({}).select('id subredditName');
   res.status(200).json(allSubreddits);
 };

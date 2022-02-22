@@ -1,23 +1,36 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useHistory } from 'react-router-dom';
+import { matchPath, useHistory } from 'react-router-dom';
+import { Editor } from "react-draft-wysiwyg";
+import { EditorState, ContentState, convertToRaw } from 'draft-js';
+import draftTToHtml from 'draftjs-to-html';
+import htmlToDraft from 'html-to-draftjs';
+import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
 import { Formik, Form } from 'formik';
 import { TextInput } from './FormikMuiFields';
 import generateBase64Encode from '../utils/genBase64Encode';
-import { createNewPost, updatePost } from '../reducers/postCommentsReducer';
+import { createNewPost, updatePost } from '../reducers/postReducer';
 import { notify } from '../reducers/notificationReducer';
 import * as yup from 'yup';
 import AlertMessage from './AlertMessage';
 import getErrorMsg from '../utils/getErrorMsg';
+import '../styles/custom.css';
 
 import {
   Button,
   ButtonGroup,
-  TextField,
-  Typography,
+  Grid, 
+  FormControlLabel, 
+  Checkbox, 
   useMediaQuery,
   IconButton,
+  FormControl, 
+  InputLabel, 
+  Select, 
+  MenuItem, 
+  withStyles, 
 } from '@material-ui/core';
+import { green } from '@material-ui/core/colors';
 import { usePostFormStyles } from '../styles/muiStyles';
 import Autocomplete from '@material-ui/lab/Autocomplete';
 import { useTheme } from '@material-ui/core/styles';
@@ -28,14 +41,29 @@ import LinkIcon from '@material-ui/icons/Link';
 import PublishIcon from '@material-ui/icons/Publish';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import CancelIcon from '@material-ui/icons/Cancel';
+import MovieFilterIcon from '@material-ui/icons/MovieFilter';
 import ChatIcon from '@material-ui/icons/Chat';
 import PostAddIcon from '@material-ui/icons/PostAdd';
 import EditIcon from '@material-ui/icons/Edit';
+import ClassIcon from '@material-ui/icons/Class';
+import AddToPhotosIcon from '@material-ui/icons/AddToPhotos';
+import { flairKind, max_img_size, max_video_size, blacklistWords } from '../backendUrl';
+
+const GreenCheckbox = withStyles({
+  root: {
+    color: green[400],
+    '&$checked': {
+      color: green[600],
+    },
+  },
+  checked: {},
+})((props) => <Checkbox color="default" {...props} />);
 
 const validationSchema = yup.object({
   title: yup.string().required('Required'),
-  textSubmission: yup.string(),
+  textSubmission: yup.string(), 
   imageSubmission: yup.string(),
+  videoSubmission: yup.string(), 
   linkSubmission: yup
     .string()
     .matches(
@@ -49,38 +77,135 @@ const AddPostForm = ({
   actionType,
   postToEditType,
   postToEditTitle,
-  postToEditSub,
   postToEditId,
   textSubmission,
   linkSubmission,
-  fromSubreddit,
+  flairSubmission, 
+  imageSubmission, 
+  videoSubmission, 
+  pinSubmission, 
+  lockSubmission, 
+  is_pinned, 
+  is_locked
 }) => {
-  const [fileName, setFileName] = useState('');
+  const [imageFileName, setImageFileName] = useState('');
+  const [videoFileName, setVideoFileName] = useState('');
+  const [pinState, setPinState] = useState(() => {
+    if(is_pinned) {
+      return is_pinned;
+    } else {
+      return false;
+    }
+  });
+  const [lockState, setLockState] = useState(() => {
+    if(is_locked) {
+      return is_locked;
+    } else {
+      return false;
+    }
+  });
+  const [editorState, setEditorState] = useState(() =>
+    {
+      if (textSubmission) {
+        console.log(textSubmission);
+        let blocksFromHtml = htmlToDraft(textSubmission);
+        const { contentBlocks, entityMap } = blocksFromHtml;
+        const contentState = ContentState.createFromBlockArray(contentBlocks, entityMap);
+        return EditorState.createWithContent(contentState);
+       } else {
+        EditorState.createEmpty();
+       }  
+    }
+  );
   const [error, setError] = useState(null);
-  const { subs } = useSelector((state) => state);
+  const [flair, setFlair] = useState(flairSubmission);
+  const { user } = useSelector((state) => state);
   const dispatch = useDispatch();
   const history = useHistory();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('xs'));
   const classes = usePostFormStyles();
 
-  const fileInputOnChange = (e, setFieldValue) => {
-    const file = e.target.files[0];
-    setFileName(file.name);
-    generateBase64Encode(file, setFieldValue);
+  const handleChange = (event, setFieldValue) => {
+    setFlair(event.target.value);
+    setFieldValue('flairSubmission', event.target.value);
   };
 
-  const clearFileSelection = (setFieldValue) => {
+  const handlePinCheckChange = (event, setFieldValue) => {
+    setFieldValue('is_pinned', event.target.checked);
+    setPinState(event.target.checked);
+  }
+
+  const handleLockCheckChange = (event, setFieldValue) => {
+    setFieldValue('is_locked', event.target.checked);
+    setLockState(event.target.checked);
+  }
+
+  const handleTextChange = (event, setFieldValue) => {
+    setEditorState(event);
+    let tempText = draftTToHtml(convertToRaw(event.getCurrentContent()));
+    setFieldValue('textSubmission', tempText);
+  };
+
+  const imageFileInputOnChange = (e, setFieldValue) => {
+    const file = e.target.files[0];
+    if(file.size > max_img_size && user && user.userrole && user.userrole > 2) {
+      alert('Maximum file size exceed, This file size is more than ' + Math.floor(file.size/1024/1024) + 'MB.');
+      return false;
+    } else {
+      setImageFileName(file.name);
+      generateBase64Encode(file, setFieldValue);
+    }    
+  };
+
+  const videoFileInputOnChange = (e, setFieldValue) => {
+    const file = e.target.files[0];
+    if(file.size > max_video_size && user && user.userrole && user.userrole > 2) {
+      alert('Maximum file size exceed, This file size is more than ' + Math.floor(file.size/1024/1024) + 'MB');
+      return false;
+    } else {
+      setVideoFileName(file.name);
+      generateBase64Encode(file, setFieldValue, false, 'video');
+    }  
+  };
+
+  const clearImageFileSelection = (setFieldValue) => {
     setFieldValue('imageSubmission', '');
-    setFileName('');
+    setImageFileName('');
+  };
+
+  const clearVideoFileSelection = (setFieldValue) => {
+    console.log("video file canceled");
+    setFieldValue('videoSubmission', '');
+    setVideoFileName('');
   };
 
   const handleAddPost = async (values, { setSubmitting }) => {
+    if (!values.is_pinned) values.is_pinned = false;
+    if (!values.is_locked) values.is_locked = false;
+    if (values.textSubmission) {
+      if (values.textSubmission.length > 10008) {
+        alert('post character must be less than 10000.');
+        return;
+      }    
+      for (let i = 0; i < blacklistWords.length; i ++) {
+        if (values.textSubmission.includes(blacklistWords[i])) {
+          alert('You can not type the words ' + `'${blacklistWords[i]}'`);
+          return false;
+        }
+        if (values.title.includes(blacklistWords[i])) {
+          alert('You can not type the words ' + `'${blacklistWords[i]}'`);
+          return false;
+        }
+      }
+    }
+    
     try {
       setSubmitting(true);
       const postId = await dispatch(createNewPost(values));
       setSubmitting(false);
-      history.push(`/comments/${postId}`);
+      // history.push(`/comments/${postId}`);
+      document.location = `/comments/${postId}`;
       dispatch(notify('Added new post!', 'success'));
     } catch (err) {
       setSubmitting(false);
@@ -89,11 +214,31 @@ const AddPostForm = ({
   };
 
   const handleUpdatePost = async (values, { setSubmitting }) => {
+    if(!values.is_pinned) values.is_pinned = false;
+    if(!values.is_locked) values.is_locked = false; 
+    if (values.textSubmission) {
+      if (values.textSubmission.length > 10008) {
+        alert('post character must be less than 10000.');
+        return;
+      }    
+      for (let i = 0; i < blacklistWords.length; i ++) {
+        if (values.textSubmission.includes(blacklistWords[i])) {
+          alert('You can not type the words ' + `'${blacklistWords[i]}'`);
+          return false;
+        }
+        if (values.title.includes(blacklistWords[i])) {
+          alert('You can not type the words ' + `'${blacklistWords[i]}'`);
+          return false;
+        }
+      }
+    }
+
     try {
       setSubmitting(true);
       await dispatch(updatePost(postToEditId, values));
       setSubmitting(false);
-      history.push(`/comments/${postToEditId}`);
+      // history.push(`/comments/${postToEditId}`);
+      document.location = `/comments/${postToEditId}`;
       dispatch(notify('Successfully updated the post!', 'success'));
     } catch (err) {
       setSubmitting(false);
@@ -109,13 +254,11 @@ const AddPostForm = ({
           postType: actionType === 'edit' ? postToEditType : postType,
           textSubmission: actionType === 'edit' ? textSubmission : '',
           linkSubmission: actionType === 'edit' ? linkSubmission : '',
-          imageSubmission: '',
-          subreddit:
-            actionType === 'edit'
-              ? postToEditSub.id
-              : !fromSubreddit
-              ? ''
-              : fromSubreddit.id,
+          flairSubmission: actionType === 'edit' ? flairSubmission : 0, 
+          imageSubmission: actionType === 'edit' ? imageSubmission : '',
+          videoSubmission: actionType === 'edit' ? videoSubmission : '',
+          is_pinned: actionType === 'edit' ? pinSubmission : false, 
+          is_locked: actionType === 'edit' ? lockSubmission : false, 
         }}
         onSubmit={actionType === 'edit' ? handleUpdatePost : handleAddPost}
         validationSchema={validationSchema}
@@ -133,9 +276,11 @@ const AddPostForm = ({
                   variant={
                     values.postType === 'Text' ? 'contained' : 'outlined'
                   }
-                >
+                >                  
                   <TextFormatIcon style={{ marginRight: 2 }} />
-                  Text
+                  {!isMobile && (
+                    <>Text</>
+                  )}
                 </Button>
                 <Button
                   onClick={() => setFieldValue('postType', 'Image')}
@@ -144,7 +289,20 @@ const AddPostForm = ({
                   }
                 >
                   <ImageIcon style={{ marginRight: 5 }} />
-                  Image
+                  {!isMobile && (
+                    <>Image</>
+                  )}
+                </Button>                
+                <Button
+                  onClick={() => setFieldValue('postType', 'Video')}
+                  variant={
+                    values.postType === 'Video' ? 'contained' : 'outlined'
+                  }
+                >
+                  <MovieFilterIcon style={{ marginRight: 5 }} />
+                  {!isMobile && (
+                    <>Video</>
+                  )}
                 </Button>
                 <Button
                   onClick={() => setFieldValue('postType', 'Link')}
@@ -153,47 +311,14 @@ const AddPostForm = ({
                   }
                 >
                   <LinkIcon style={{ marginRight: 5 }} />
-                  Link
+                  {!isMobile && (
+                    <>Link</>
+                  )}
                 </Button>
               </ButtonGroup>
             )}
             <div className={classes.input}>
-              <Typography
-                className={classes.inputIconText}
-                color="primary"
-                variant="h5"
-              >
-                r/
-              </Typography>
-              <Autocomplete
-                name="subreddit"
-                onChange={(e, value) =>
-                  setFieldValue('subreddit', value ? value.id : '')
-                }
-                fullWidth
-                options={subs && subs.allSubs}
-                disabled={actionType === 'edit' || !!fromSubreddit}
-                getOptionLabel={(option) => option.subredditName}
-                getOptionSelected={(option, value) => option.id === value.id}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label={
-                      actionType === 'edit'
-                        ? postToEditSub.subredditName
-                        : !fromSubreddit
-                        ? 'Choose a subreddish'
-                        : fromSubreddit.subredditName
-                    }
-                    placeholder="Search by name"
-                    required
-                    disabled={actionType === 'edit' || !!fromSubreddit}
-                  />
-                )}
-              />
-            </div>
-            <div className={classes.input}>
-              <TitleIcon className={classes.inputIcon} color="primary" />
+              <TitleIcon className={classes.inputIcon} style={{opacity: 0}} />
               <TextInput
                 name="title"
                 type="text"
@@ -205,19 +330,15 @@ const AddPostForm = ({
               />
             </div>
             {values.postType === 'Text' && (
-              <div className={classes.textInput}>
+              <div className={classes.textInput} style={{alignItems: 'flex-start'}}>
                 <ChatIcon className={classes.inputIcon} color="primary" />
-                <TextInput
-                  name="textSubmission"
-                  placeholder={`Enter text (HTML supported. For ex, "<h1>Like this?</h1>")`}
-                  multiline
-                  label="Text"
-                  required={values.postType === 'Text'}
-                  fullWidth
-                  variant="outlined"
-                  rows={4}
-                  maxRows={Infinity}
-                />
+                <div style={{ border: "1px solid black", padding: '2px', width: '100%' }}>
+                  <Editor
+                    editorState={editorState}
+                    defaultEditorState={editorState}
+                    onEditorStateChange={(event) => handleTextChange(event, setFieldValue)}
+                  />
+                </div>
               </div>
             )}
             {values.postType === 'Image' && (
@@ -229,7 +350,7 @@ const AddPostForm = ({
                     id="image-upload"
                     accept="image/*"
                     hidden
-                    onChange={(e) => fileInputOnChange(e, setFieldValue)}
+                    onChange={(e) => imageFileInputOnChange(e, setFieldValue)}
                     required={values.postType === 'Image'}
                   />
                   <Button
@@ -249,12 +370,19 @@ const AddPostForm = ({
                     className={classes.selectBtn}
                   >
                     {values.imageSubmission
-                      ? `${isMobile ? '' : 'Selected '}"${fileName}"`
-                      : `Select Image`}
+                      ? `${isMobile 
+                            ? user && user.userrole && user.userrole < 3 
+                              ? 'max:no limit'
+                              : 'max:4MB'
+                            : 'Selected '}"${imageFileName}"`
+                      : `${user && user.userrole && user.userrole < 3
+                            ? 'Select Image'
+                            : 'Select Image (max:4MB)'}`
+                    }
                   </Button>
                   {values.imageSubmission && (
                     <IconButton
-                      onClick={() => clearFileSelection(setFieldValue)}
+                      onClick={() => clearImageFileSelection(setFieldValue)}
                       color="secondary"
                       size={isMobile ? 'small' : 'medium'}
                       className={classes.clearSelectionBtn}
@@ -263,13 +391,72 @@ const AddPostForm = ({
                     </IconButton>
                   )}
                 </div>
-                {values.imageSubmission && (
+                {!isMobile && values.imageSubmission && (
                   <div className={classes.imagePreview}>
                     <img
-                      alt={fileName}
+                      alt={imageFileName}
                       src={values.imageSubmission}
                       width={isMobile ? 250 : 350}
                     />
+                  </div>
+                )}
+              </div>
+            )}
+            {values.postType === 'Video' && (
+              <div className={classes.imageInput}>
+                <div className={classes.imageBtnsWrapper}>
+                  <MovieFilterIcon className={classes.inputIcon} color="primary" />
+                  <input
+                    type="file"
+                    id="video-upload"
+                    accept="video/*"
+                    hidden
+                    onChange={(e) => videoFileInputOnChange(e, setFieldValue)}
+                    required={values.postType === 'Video'}
+                  />
+                  <Button
+                    component="label"
+                    htmlFor="video-upload"
+                    variant="outlined"
+                    color="primary"
+                    fullWidth
+                    startIcon={
+                      values.videoSubmission ? (
+                        <CheckCircleIcon />
+                      ) : (
+                        <PublishIcon />
+                      )
+                    }
+                    size={isMobile ? 'small' : 'medium'}
+                    className={classes.selectBtn}
+                  >
+                    {values.videoSubmission
+                      ? `${isMobile 
+                            ? user && user.userrole && user.userrole < 3 
+                              ? 'max:no limit'
+                              : 'max:20MB'
+                            : 'Selected '}"${videoFileName}"`
+                      : `${user && user.userrole && user.userrole < 3
+                            ? 'Select Video'
+                            : 'Select Video (max:20MB)'}`
+                    }
+                  </Button>
+                  {values.videoSubmission && (
+                    <IconButton
+                      onClick={() => clearVideoFileSelection(setFieldValue)}
+                      color="secondary"
+                      size={isMobile ? 'small' : 'medium'}
+                      className={classes.clearSelectionBtn}
+                    >
+                      <CancelIcon />
+                    </IconButton>
+                  )}
+                </div>
+                {!isMobile && values.videoSubmission && (
+                  <div className={classes.imagePreview}>
+                    <video width="320" height="240" controls>
+                      <source src={values.videoSubmission} type="video/mp4"/>
+                    </video>
                   </div>
                 )}
               </div>
@@ -287,6 +474,62 @@ const AddPostForm = ({
                   variant={actionType === 'edit' ? 'outlined' : 'standard'}
                 />
               </div>
+            )}
+            <div className={classes.textInput}>
+              <ClassIcon className={classes.inputIcon} color="primary" />
+              <FormControl className={classes.formControl} fullWidth>
+                <InputLabel id="post-flair">Flair</InputLabel>
+                <Select
+                  labelId="post-flair"
+                  id="flairSubmission"
+                  name="flairSubmission"
+                  value={flair}
+                  onChange={(event) => handleChange(event, setFieldValue)}
+                >
+                  {flairKind.map((row) => (
+                    <MenuItem key={row.id} value={row.id} disabled={!(user.userrole <= row.role)} style={{color: '$row.background'}}>
+                      {row.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </div>
+            {user && user.userrole < 3 && (
+              <div className={classes.textInput}>
+                <AddToPhotosIcon className={classes.inputIcon} color="primary" />
+                <Grid container>
+                  <Grid item md={1} xs={1}></Grid>
+                  <Grid item md={3} xs={11}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={pinState}
+                          onChange={(event) => handlePinCheckChange(event, setFieldValue)}
+                          name="is_pinned"
+                          color="primary"
+                        />
+                      }
+                      label="Pin_State"
+                      labelPlacement="end"
+                    />
+                  </Grid>
+                  <Grid item md={1} xs={1}></Grid>
+                  <Grid item md={3} xs={11}>
+                  <FormControlLabel
+                    control={
+                      <GreenCheckbox 
+                        checked={lockState}
+                        onChange={(event) => handleLockCheckChange(event, setFieldValue)}
+                        name="is_locked"
+                        color="primary"
+                      />
+                    }
+                    label="Lock_State"
+                    labelPlacement="end"
+                  />
+                  </Grid>
+                </Grid>
+              </div>              
             )}
             <Button
               type="submit"

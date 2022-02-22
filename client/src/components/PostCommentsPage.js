@@ -4,13 +4,17 @@ import { useSelector, useDispatch } from 'react-redux';
 import {
   fetchPostComments,
   toggleUpvote,
-  toggleDownvote,
+  toggleDownvote, 
 } from '../reducers/postCommentsReducer';
+import { userReadPost } from '../reducers/userReducer';
 import { notify } from '../reducers/notificationReducer';
 import CommentInput from './CommentInput';
+import AwardInput from './AwardInput';
 import { UpvoteButton, DownvoteButton } from './VoteButtons';
+import AuthFormModal from './AuthFormModal';
 import EditDeleteMenu from './EditDeleteMenu';
 import CommentsDisplay from './CommentsDisplay';
+import AwardsDisplay from './AwardsDisplay';
 import SortCommentsMenu from './SortCommentsMenu';
 import ErrorPage from './ErrorPage';
 import LoadingSpinner from './LoadingSpinner';
@@ -18,6 +22,7 @@ import TimeAgo from 'timeago-react';
 import { trimLink, prettifyLink, fixUrl } from '../utils/formatUrl';
 import ReactHtmlParser from 'react-html-parser';
 import getErrorMsg from '../utils/getErrorMsg';
+import Avatar from '@material-ui/core/Avatar';
 
 import {
   Container,
@@ -28,32 +33,52 @@ import {
   MenuItem,
   ListItemIcon,
   Divider,
+  Button, 
 } from '@material-ui/core';
 import { usePostCommentsStyles } from '../styles/muiStyles';
 import { useTheme } from '@material-ui/core/styles';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import CommentIcon from '@material-ui/icons/Comment';
+import { flairKind, cntAwards } from '../backendUrl';
 
 const PostCommentsPage = () => {
   const { id: postId } = useParams();
   const post = useSelector((state) => state.postComments);
+
   const { user, darkMode } = useSelector((state) => state);
+
   const [pageLoading, setPageLoading] = useState(true);
   const [pageError, setPageError] = useState(null);
+
   const dispatch = useDispatch();
 
   useEffect(() => {
     const getComments = async () => {
       try {
+        // await dispatch(userReadPost(postId));
         await dispatch(fetchPostComments(postId));
         setPageLoading(false);
       } catch (err) {
         setPageError(getErrorMsg(err));
       }
     };
+    // console.log(postId);
+    if (user?.token !== '') {
+      dispatch(userReadPost(postId));
+    } else {
+    }
     getComments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
+
+  for (let i = 0; i < cntAwards.length; i ++) {
+    cntAwards[i].awardCnt = 0;
+  }
+
+  if(post && post.awards && post.awards.length !== 0) {
+    for (let i = 0; i < post.awards.length ; i ++) {
+      cntAwards[post.awards[i].awardBody].awardCnt ++;
+    }
+  }
 
   const classes = usePostCommentsStyles();
   const theme = useTheme();
@@ -85,17 +110,22 @@ const PostCommentsPage = () => {
     postType,
     textSubmission,
     linkSubmission,
-    imageSubmission,
-    subreddit,
+    imageSubmission, 
+    videoSubmission, 
     author,
     upvotedBy,
     downvotedBy,
     pointsCount,
     comments,
     commentCount,
+    awards, 
     createdAt,
     updatedAt,
+    flairSubmission, 
+    is_pinned, 
+    is_locked,
   } = post;
+
 
   const isUpvoted = user && upvotedBy.includes(user.id);
   const isDownvoted = user && downvotedBy.includes(user.id);
@@ -168,27 +198,90 @@ const PostCommentsPage = () => {
           </div>
           <div className={classes.postDetails}>
             <Typography variant="subtitle2">
-              <Link component={RouterLink} to={`/r/${subreddit.subredditName}`}>
-                {`r/${subreddit.subredditName} `}
-              </Link>
-              <Typography variant="caption" className={classes.userAndDate}>
-                • Posted by
-                <Link component={RouterLink} to={`/u/${author.username}`}>
-                  {` u/${author.username} `}
-                </Link>
-                • <TimeAgo datetime={new Date(createdAt)} />
-                {createdAt !== updatedAt && (
-                  <em>
-                    {' • edited'} <TimeAgo datetime={new Date(updatedAt)} />
-                  </em>
-                )}
+              {
+                author ? 
+                (
+                  <Typography variant="caption" className={classes.userAndDate}>
+                    • Posted by
+                    <Link component={RouterLink} to={`/u/${author.username}`}>
+                      {` u/${author.username} `}
+                    </Link>
+                    • <TimeAgo datetime={new Date(createdAt)} />
+                    {createdAt !== updatedAt && (
+                      <em>
+                        {' • edited'} <TimeAgo datetime={new Date(updatedAt)} />
+                      </em>
+                    )}
+                  </Typography>
+                ) : (
+                  <Typography variant="caption" className={classes.userAndDate}>
+                    • <TimeAgo datetime={new Date(createdAt)} />
+                    {createdAt !== updatedAt && (
+                      <em>
+                        {' • edited'} <TimeAgo datetime={new Date(updatedAt)} />
+                      </em>
+                    )}
+                  </Typography>
+                )
+              }              
+            </Typography>
+            {!isMobile ? (
+              <Typography variant="h5" className={classes.title}>
+                <MenuItem className={classes.bottomButton}>                
+                  <span style={{ fontFamily: 'inherit', whiteSpace: 'pre-line', lineBreak: 'auto' }}>{title}</span>
+                  {awards.length === 0 
+                  ? (
+                      null
+                    )
+                  : (
+                      cntAwards.map((row) => (
+                        row.awardCnt !== 0 && (
+                          <ListItemIcon key={row.id}>
+                            <Avatar alt="" src={row.awardImg} style={{marginLeft: '25px', width: '1.5em', height: '1.5em'}}/>
+                            <Typography variant="h6" style={{marginLeft: '10px', marginTop: '-3px', marginRight: '5px'}}>{row.awardCnt}</Typography>
+                          </ListItemIcon>
+                        )
+                      ))
+                    )
+                  }
+                  {post && post.flairSubmission !== 0 && (
+                    <Button variant="outlined" style={{marginLeft: '10px', borderRadius: 10}}>{flairKind[flairSubmission].name}</Button>
+                  )}
+                </MenuItem>
               </Typography>
-            </Typography>
-            <Typography variant="h5" className={classes.title}>
-              {title}
-            </Typography>
+            ) : (
+              <>
+                <Typography variant="h5" className={classes.title}>
+                  <span style={{ fontFamily: 'inherit', whiteSpace: 'pre-line', lineBreak: 'auto' }}>{title}</span>
+                </Typography>
+                <Typography variant="h5" className={classes.title}>
+                  {awards.length === 0 
+                  ? (
+                      null
+                    )
+                  : (
+                      cntAwards.map((row) => (
+                        row.awardCnt !== 0 && (
+                          <ListItemIcon key={row.id}>
+                            <Avatar alt="" src={row.awardImg} style={{marginLeft: '25px', width: '1.5em', height: '1.5em'}}/>
+                            <Typography variant="h6" style={{marginLeft: '10px', marginTop: '-3px', marginRight: '5px'}}>{row.awardCnt}</Typography>
+                          </ListItemIcon>
+                        )
+                      ))
+                    )
+                  }
+                </Typography>
+                <Typography>
+                  {post && post.flairSubmission !== 0 && (
+                    <Button variant="outlined" style={{marginLeft: '10px', marginBottom: '15px', borderRadius: 10}}>{flairKind[flairSubmission].name}</Button>
+                  )}
+                </Typography>
+              </>
+            )}
             {postType === 'Text' ? (
-              <div>{ReactHtmlParser(textSubmission)}</div>
+              <pre style={{ fontFamily: 'inherit', whiteSpace: 'pre-line', lineBreak: 'auto' }}>
+                {ReactHtmlParser(textSubmission)}
+              </pre>
             ) : postType === 'Image' ? (
               <a
                 href={imageSubmission.imageLink}
@@ -203,6 +296,24 @@ const PostCommentsPage = () => {
                   className={classes.image}
                 />
               </a>
+            ) : postType === 'Video' ? (
+              <a
+                // href={videoSubmission.videoLink}
+                alt={title}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={classes.imagePost}
+              >
+                {isMobile ? (
+                  <video width="200px" controls>
+                    <source src={videoSubmission.videoLink} type="video/mp4"/>
+                  </video>
+                ) : (
+                  <video width="400px" controls>
+                    <source src={videoSubmission.videoLink} type="video/mp4"/>
+                  </video>
+                )}                
+              </a>
             ) : (
               <Link href={fixUrl(linkSubmission)}>
                 {formattedLink} <OpenInNewIcon fontSize="inherit" />
@@ -215,25 +326,50 @@ const PostCommentsPage = () => {
                   <Typography variant="subtitle2">{commentCount}</Typography>
                 </ListItemIcon>
               </MenuItem>
-              {user && user.id === author.id && (
+              {(user?.id === author?.id) || ((user && user.userrole === 1) || (user && user.userrole === 2)) 
+              ? (
                 <EditDeleteMenu
                   id={id}
                   isMobile={isMobile}
                   title={title}
                   postType={postType}
-                  subreddit={subreddit}
                   buttonType="buttonGroup"
                   textSubmission={textSubmission}
                   linkSubmission={linkSubmission}
+                  flairSubmission={flairSubmission}
+                  is_pinned={is_pinned}
+                  is_locked={is_locked}
                 />
-              )}
+                )
+              : (
+                  null
+                )}
             </div>
-            <CommentInput user={user} postId={id} isMobile={isMobile} />
-            <SortCommentsMenu />
+            {
+              (is_pinned || is_locked) 
+              ? user && user.userrole && user.userrole < 3 && (
+                <>
+                  <CommentInput user={user} postId={id} post={post} isMobile={isMobile} />
+                  <AwardInput user={user} postId={id} post={post} isMobile={isMobile} />
+                  <SortCommentsMenu />
+                </>
+                )
+              : 
+                (
+                  <>
+                    <CommentInput user={user} postId={id} post={post} isMobile={isMobile} />
+                    <AwardInput user={user} postId={id} post={post} isMobile={isMobile} />
+                    <SortCommentsMenu />
+                  </>
+                )
+            }
           </div>
         </div>
         <Divider className={classes.divider} />
-        <CommentsDisplay comments={comments} postId={id} isMobile={isMobile} />
+        <CommentsDisplay comments={comments} postId={id} isMobile={isMobile} style={{overflowX: 'scroll'}}/>
+        {user && user.userrole === 1 && (
+          <AwardsDisplay awards={awards} postId={id} isMobile={isMobile} />
+        )}
       </Paper>
     </Container>
   );

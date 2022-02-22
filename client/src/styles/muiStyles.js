@@ -717,7 +717,7 @@ export const useSortTabStyles = makeStyles(
   { index: 1 }
 );
 
-export const useSubPanelStyles = makeStyles(
+export const useUsersPanelStyles = makeStyles(
   (theme) => ({
     mainPaper: {
       minWidth: '25%',

@@ -1,13 +1,15 @@
 import React from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { Switch, Route } from 'react-router-dom';
 import PostFormModal from './components/PostFormModal';
 import PostList from './components/PostList';
 import PostCommentsPage from './components/PostCommentsPage';
 import UserPage from './components/UserPage';
 import SubPage from './components/SubPage';
-import TopSubsPanel from './components/TopSubsPanel';
+import UsersPanel from './components/UsersPanel';
 import SearchResults from './components/SearchResults';
 import NotFoundPage from './components/NotFoundPage';
+import ManagePannel from './admin/ManagePannel';
 
 import { Container } from '@material-ui/core/';
 import { useMainPaperStyles } from './styles/muiStyles';
@@ -23,10 +25,10 @@ const Routes = () => {
             <PostFormModal />
             <PostList />
           </div>
-          <TopSubsPanel />
+          <UsersPanel />
         </Container>
       </Route>
-      <Route exact path="/comments/:id">
+      <Route exact path="/comments/:id">    
         <PostCommentsPage />
       </Route>
       <Route exact path="/u/:username">
@@ -37,6 +39,15 @@ const Routes = () => {
       </Route>
       <Route exact path="/search/:query">
         <SearchResults />
+      </Route>
+      <Route exact path="/manage">
+        <Container disableGutters className={classes.homepage}>
+          <div className={classes.postsPanel}>
+            <PostFormModal />
+            <ManagePannel />
+          </div>
+          <UsersPanel />
+        </Container>
       </Route>
       <Route>
         <NotFoundPage />

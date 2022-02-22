@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Link as RouterLink } from 'react-router-dom';
 import { UpvoteButton, DownvoteButton } from './VoteButtons';
 import { notify } from '../reducers/notificationReducer';
+import { getBanState, userReadPost } from '../reducers/userReducer';
 import EditDeleteMenu from './EditDeleteMenu';
 import getEditedThumbail from '../utils/cloudinaryTransform';
 import { trimLink, prettifyLink, fixUrl } from '../utils/formatUrl';
@@ -15,14 +16,20 @@ import {
   useMediaQuery,
   CardMedia,
   Link,
+  SvgIcon, 
   Button,
+  ListItemIcon, 
+  Avatar, 
 } from '@material-ui/core';
 import { useCardStyles } from '../styles/muiStyles';
 import { useTheme } from '@material-ui/core/styles';
+import { ReactComponent as PinIcon } from '../svg/pin.svg';
+import { ReactComponent as LockIcon } from '../svg/lock.svg';
 import MessageIcon from '@material-ui/icons/Message';
 import LinkIcon from '@material-ui/icons/Link';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import CommentIcon from '@material-ui/icons/Comment';
+import { flairKind, cntAwards } from '../backendUrl';
 
 const PostCard = ({ post, toggleUpvote, toggleDownvote }) => {
   const {
@@ -31,15 +38,19 @@ const PostCard = ({ post, toggleUpvote, toggleDownvote }) => {
     postType,
     textSubmission,
     linkSubmission,
-    imageSubmission,
-    subreddit,
+    imageSubmission, 
+    videoSubmission, 
     author,
     upvotedBy,
     downvotedBy,
     pointsCount,
+    awards, 
     commentCount,
     createdAt,
     updatedAt,
+    flairSubmission, 
+    is_pinned, 
+    is_locked, 
   } = post;
 
   const classes = useCardStyles();
@@ -47,6 +58,26 @@ const PostCard = ({ post, toggleUpvote, toggleDownvote }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('xs'));
   const dispatch = useDispatch();
   const { user, darkMode } = useSelector((state) => state);
+
+  const [ban_state, setBan_state] = useState(false);
+  const [ban_user, setBan_user] = useState('');
+
+  useEffect(() => {
+    const getBan_state = async () => {
+      try {
+        if(author) {
+          var temp = await dispatch(getBanState(post.author.id));
+          setBan_state(temp.ban_state);
+          setBan_user(temp.ban_user);
+        }          
+      } catch (err) {
+        dispatch(notify(getErrorMsg(err), 'error'));
+      }
+    };
+
+    getBan_state();
+  }, []);
+
 
   const isUpvoted = user && upvotedBy.includes(user.id);
   const isDownvoted = user && downvotedBy.includes(user.id);
@@ -90,6 +121,26 @@ const PostCard = ({ post, toggleUpvote, toggleDownvote }) => {
 
   const formattedLink = trimLink(prettifyLink(linkToShow), 30);
 
+  for (let i = 0; i < 24; i ++) {
+    cntAwards[i].awardCnt = 0;
+  }
+
+  if(post && post.awards && post.awards.length !== 0) {
+    for (let i = 0; i < post.awards.length ; i ++) {
+      cntAwards[post.awards[i].awardBody].awardCnt ++;
+    }
+  }
+
+  let isReaded = false;
+  if( post && user && user.readposts ) {
+    for (let i = 0; i < user.readposts.length; i ++) {
+      if(post.id === user.readposts[i]) {
+        isReaded = true;
+        break;
+      }      
+    }
+  }
+
   return (
     <Paper className={classes.root} variant="outlined">
       <div className={classes.votesWrapper}>
@@ -123,7 +174,7 @@ const PostCard = ({ post, toggleUpvote, toggleDownvote }) => {
       </div>
       <div className={classes.thumbnailWrapper}>
         {postType === 'Text' ? (
-          <RouterLink to={`/comments/${id}`}>
+          <a href={`/comments/${id}`}>
             <Paper elevation={0} square className={classes.thumbnail}>
               <MessageIcon
                 fontSize="inherit"
@@ -131,7 +182,7 @@ const PostCard = ({ post, toggleUpvote, toggleDownvote }) => {
                 style={{ color: '#787878' }}
               />
             </Paper>
-          </RouterLink>
+          </a>
         ) : postType === 'Link' ? (
           <a href={fixUrl(linkSubmission)} target="_noblank">
             <Paper elevation={0} square className={classes.thumbnail}>
@@ -142,52 +193,138 @@ const PostCard = ({ post, toggleUpvote, toggleDownvote }) => {
               />
             </Paper>
           </a>
-        ) : (
+        ) : postType === 'Image' ? (
           <Paper elevation={0} square className={classes.thumbnail}>
             <CardMedia
               className={classes.thumbnail}
-              image={getEditedThumbail(imageSubmission.imageLink)}
+              image={getEditedThumbail(imageSubmission?.imageLink)}
               title={title}
               component="a"
               href={imageSubmission.imageLink}
               target="_noblank"
             />
           </Paper>
+        ) : (
+          <Paper elevation={0} square className={classes.thumbnail}>
+            <CardMedia
+              className={classes.thumbnail}
+              src={(videoSubmission?.videoLink)}
+              title={title}
+              component="video"
+              href={videoSubmission.videoLink}
+              target="_noblank"
+            />
+            {/* {isMobile ? (
+              <video width="60" height="80" controls style={{marginTop: '0px'}} >
+                <source src={videoSubmission.videoLink} type="video/mp4"/>
+              </video>
+            ) : (
+              <video width="70" height="90" controls style={{marginTop: '0px', marginLeft: '0px'}} >
+                <source src={videoSubmission.videoLink} type="video/mp4"/>
+              </video>
+            )} */}            
+          </Paper>
         )}
       </div>
       <div className={classes.postInfoWrapper}>
         <Typography variant="h6" className={classes.title}>
-          {title}{' '}
-          <Typography variant="caption" color="primary" className={classes.url}>
-            <Link
-              href={
-                postType === 'Link'
-                  ? fixUrl(linkSubmission)
-                  : postType === 'Image'
-                  ? imageSubmission.imageLink
-                  : ''
-              }
-            >
-              {formattedLink}
-              {postType === 'Text' ? null : (
-                <OpenInNewIcon fontSize="inherit" />
-              )}
-            </Link>
-          </Typography>
+          {isReaded
+          ? (
+              <Link component={RouterLink} to={`/comments/${id}`} style={{opacity: '65%'}}>
+                {post.is_pinned && (
+                  <SvgIcon fontSize="small" style={{height: '12px'}}>
+                    <PinIcon />
+                  </SvgIcon>
+                )} {' '}
+                {post.is_locked && (
+                  <SvgIcon fontSize="small" style={{height: '12px'}}>
+                    <LockIcon />
+                  </SvgIcon>
+                )} {' '}
+                {title}                    
+              </Link>
+            )
+          : (
+              <Link component={RouterLink} to={`/comments/${id}`}>
+                {post.is_pinned && (
+                  <SvgIcon fontSize="small" style={{height: '12px'}}>
+                    <PinIcon />
+                  </SvgIcon>
+                )} {' '}
+                {post.is_locked && (
+                  <SvgIcon fontSize="small" style={{height: '12px'}}>
+                    <LockIcon />
+                  </SvgIcon>
+                )} {' '}
+                {title}
+              </Link>
+            )
+          }
+          {awards.length !== 0 && (
+            cntAwards.map((row) => (
+              row.awardCnt !== 0 && (
+                <ListItemIcon key={row.id}>
+                  <Avatar alt="" src={row.awardImg} style={{marginLeft: '15px', width: '0.8em', height: '0.8em'}}/>
+                  <Typography variant="subtitle2" style={{marginLeft: '5px', marginRight: '15px', marginTop: '-3px'}}>{row.awardCnt}</Typography>
+                </ListItemIcon>
+              )
+            )))
+          }              
+          {flairSubmission !== 0 && (
+            <Button variant="outlined" style={{height: 'fit-content', marginLeft: '10px', borderRadius: 8}} size="small">{flairKind[flairSubmission].name}</Button>
+          )}
         </Typography>
-        <Typography variant="subtitle2">
-          <Link component={RouterLink} to={`/r/${subreddit.subredditName}`}>
-            r/{subreddit.subredditName}
-          </Link>
-          <Typography variant="caption" className={classes.userAndDate}>
-            Posted by{' '}
-            <Link component={RouterLink} to={`/u/${author.username}`}>
-              u/{author.username}
-            </Link>{' '}
-            • <TimeAgo datetime={new Date(createdAt)} />
-            {createdAt !== updatedAt && '*'}
-          </Typography>
-        </Typography>
+        {author 
+          ? ban_state 
+            ? user && user.username && user.username === ban_user
+              ? (
+                  <Typography variant="subtitle2">
+                    <Typography variant="caption" className={classes.userAndDate}>
+                      Posted by{' '}
+                      <a href={`/u/${author.username}`}>
+                        u/{author.username}
+                      </a>{' '}
+                      • <TimeAgo datetime={new Date(createdAt)} />
+                      {createdAt !== updatedAt && '*'}
+                    </Typography>
+                  </Typography>
+                )
+              : 
+                (
+                  <Typography variant="subtitle2">
+                    <Typography variant="caption" className={classes.userAndDate} style={{textDecoration: 'line-through'}}>
+                      Posted by{' '}
+                      <Link component={RouterLink} to={`/u/${author.username}`}>
+                        u/{author.username}
+                      </Link>{' '}
+                      • <TimeAgo datetime={new Date(createdAt)} />
+                      {createdAt !== updatedAt && '*'}
+                    </Typography>
+                  </Typography>
+                )
+            : 
+              (
+                <Typography variant="subtitle2">
+                  <Typography variant="caption" className={classes.userAndDate}>
+                    Posted by{' '}
+                    <Link component={RouterLink} to={`/u/${author.username}`}>
+                      u/{author.username}
+                    </Link>{' '}
+                    • <TimeAgo datetime={new Date(createdAt)} />
+                    {createdAt !== updatedAt && '*'}
+                  </Typography>
+                </Typography>
+              )
+          : 
+            (
+              <Typography variant="subtitle2">
+                <Typography variant="caption" className={classes.userAndDate}>
+                  • <TimeAgo datetime={new Date(createdAt)} />
+                  {createdAt !== updatedAt && '*'}
+                </Typography>
+              </Typography>
+            )
+        }
         <div className={classes.bottomBtns}>
           <Button
             startIcon={<CommentIcon />}
@@ -198,20 +335,22 @@ const PostCard = ({ post, toggleUpvote, toggleDownvote }) => {
           >
             {commentCount} comments
           </Button>
-          {user && user.id === author.id && (
+          {user && ((author && user.id === author.id) || user.userrole < 3) && (
             <EditDeleteMenu
               id={id}
               isMobile={isMobile}
               title={title}
               postType={postType}
-              subreddit={subreddit}
               textSubmission={textSubmission}
               linkSubmission={linkSubmission}
+              flairSubmission={flairSubmission}
+              is_pinned={is_pinned}
+              is_locked={is_locked}
             />
           )}
         </div>
       </div>
-    </Paper>
+    </Paper>          
   );
 };
 

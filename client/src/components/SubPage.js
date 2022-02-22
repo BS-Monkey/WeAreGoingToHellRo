@@ -43,6 +43,7 @@ const SubPage = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [descInput, setDescInput] = useState('');
   const [sortBy, setSortBy] = useState('hot');
+  const [flairBy, setFlairBy] = useState(0);
   const [page, setPage] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
@@ -267,7 +268,7 @@ const SubPage = () => {
           </div>
         </Paper>
         <PostFormModal fromSubreddit={{ subredditName, id }} />
-        <SortTabBar sortBy={sortBy} handleTabChange={handleTabChange} />
+        <SortTabBar sortBy={sortBy} filterFlair={flairBy} handleTabChange={handleTabChange} />
         {postsLoading ? (
           <LoadingSpinner text={'Fetching subreddit posts...'} />
         ) : (

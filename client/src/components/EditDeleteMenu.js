@@ -14,10 +14,12 @@ const EditDeleteMenu = ({
   id,
   title,
   postType,
-  subreddit,
   buttonType,
   textSubmission,
   linkSubmission,
+  flairSubmission, 
+  is_locked, 
+  is_pinned
 }) => {
   const dispatch = useDispatch();
   const history = useHistory();
@@ -36,10 +38,12 @@ const EditDeleteMenu = ({
     try {
       handleClose();
       await dispatch(removePost(id));
-      if (location.pathname !== '/') {
-        history.push('/');
-      }
       dispatch(notify(`Post deleted!`, 'success'));
+      if (location.pathname !== '/') {
+        // history.push('/');
+        document.location = '/';
+      }
+      document.location = '/';
     } catch (err) {
       dispatch(notify(getErrorMsg(err), 'error'));
     }
@@ -54,10 +58,12 @@ const EditDeleteMenu = ({
             handleMenuClose={handleClose}
             postToEditType={postType}
             postToEditTitle={title}
-            postToEditSub={subreddit}
             postToEditId={id}
             textSubmission={textSubmission}
             linkSubmission={linkSubmission}
+            flairSubmission={flairSubmission}
+            is_pinned={is_pinned}
+            is_locked={is_locked}
           />
           <DeleteDialog
             title={title}
@@ -82,10 +88,12 @@ const EditDeleteMenu = ({
                 handleMenuClose={handleClose}
                 postToEditType={postType}
                 postToEditTitle={title}
-                postToEditSub={subreddit}
                 postToEditId={id}
                 textSubmission={textSubmission}
                 linkSubmission={linkSubmission}
+                flairSubmission={flairSubmission}
+                is_locked={is_locked}
+                is_pinned={is_pinned}
               />
             </div>
             <DeleteDialog
