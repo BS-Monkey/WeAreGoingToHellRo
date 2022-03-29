@@ -2,7 +2,6 @@ const jwt = require('jsonwebtoken');
 const { SECRET } = require('../utils/config');
 
 const auth = (req, res, next) => {
-  // console.log('auth', req.header('x-auth-token'));
   try {
     const token = req.header('x-auth-token');
 

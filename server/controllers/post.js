@@ -155,6 +155,7 @@ const getPostAndComments = async (req, res) => {
 };
 
 const createNewPost = async (req, res) => {
+  console.log(req.body)
   const {
     title,
     postType,
